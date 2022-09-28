@@ -1,8 +1,7 @@
-import os
-import sys
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'EV_PDDL'))
 from platform_communication import PlatformCommunication
+from encounter import Encounter
 import time
 import jsonpickle
 from ev_pddl.PDDL import PDDL_Parser
@@ -20,6 +19,7 @@ class ExperienceManager:
     def __init__(self) -> None:
         self.platform_communication = PlatformCommunication()
         self._PDDL_parser = PDDL_Parser()
+        self.encounters = []
 
     def start_platform_communication(self):
         """
@@ -52,6 +52,8 @@ class ExperienceManager:
             print("Domain received successfully")
             self.PDDL_problem_text = str(response['problem'])
             print("Problem received successfully")
+            self.encounters_received = jsonpickle.decode(str(response['additional_data']))
+            print("Encounters received successfully")
             print("Handshake -- phase 3 successful.")
         else:
             raise Exception("Error: Received unexpected message: " + response['text'])
@@ -89,8 +91,6 @@ class ExperienceManager:
         This is the main loop of the experience manager.
         """
         self.platform_communication.start_receiving_messages()
-        # debugpy.listen(5678)
-        # debugpy.wait_for_client()
         self.domain = self._PDDL_parser.parse_domain(domain_str = self.PDDL_domain_text)
         # self.domain = self._PDDL_parser.parse_domain(domain_filename="domain.pddl")
         print("Domain parsed correcly")
@@ -99,9 +99,12 @@ class ExperienceManager:
         print("Problem parsed correcly")
         self.environment_state = WorldState()
         self.environment_state.create_worldstate_from_problem(problem = self.problem, domain=self.domain)
+        for item in self.encounters_received['encounters']:
+            self.encounter_initialization(item)
         print("Starting normal communication...")
         print("Press something to start the action builder...")
         thread = None
+        debugpy.listen(5678)
         while True:
             message = self.platform_communication.get_received_message()
             if message is not None:
@@ -112,15 +115,39 @@ class ExperienceManager:
                 if thread is None or thread.is_alive() == False:
                     print("Received message: " + str(changed_relations))
                 self.update_environment_state(changed_relations)
-            if thread is None or thread.is_alive() == False:
-                try:
-                    answer = input_timeout.input_with_timeout("", 1)
-                except input_timeout.TimeoutExpired:
+                applicable_encounters = self.get_available_encounters()
+                if len(applicable_encounters) > 0:
                     pass
-                else:
-                    thread = threading.Thread(target=self.create_action_to_send_to_environment, daemon=True)
-                    thread.start()
+                time.sleep(1)
+            # if thread is None or thread.is_alive() == False:
+            #     try:
+            #         answer = input_timeout.input_with_timeout("", 1)
+            #     except input_timeout.TimeoutExpired:
+            #         pass
+            #     else:
+            #         thread = threading.Thread(target=self.create_action_to_send_to_environment, daemon=True)
+            #         thread.start()
     
+    def get_available_encounters(self) -> list:
+        """
+        This method is used to get the encounters that are available to be applied. 
+        It checks the preconditions of the encounters with the worldstate and returns the ones that can be applied.
+        """
+        return_list = []
+        debugpy.breakpoint()
+        for encounter in self.encounters:
+            applicable, _ = self.environment_state.check_precondition_recursive(encounter.preconditions)
+            if applicable:
+                return_list.append(encounter)
+        return return_list
+
+    def encounter_initialization(self, encounter_data):
+        """
+        This method is used to initialize the encounter.
+        """
+        encounter = Encounter(encounter_data, self.environment_state)
+        self.encounters.append(encounter)
+
     def update_environment_state(self, changed_relations):
         """
         This method is used to update the environment state.
