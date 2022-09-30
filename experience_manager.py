@@ -104,7 +104,7 @@ class ExperienceManager:
         print("Starting normal communication...")
         print("Press something to start the action builder...")
         thread = None
-        debugpy.listen(5678)
+        # debugpy.listen(5678)
         while True:
             message = self.platform_communication.get_received_message()
             if message is not None:
@@ -117,7 +117,8 @@ class ExperienceManager:
                 self.update_environment_state(changed_relations)
                 applicable_encounters = self.get_available_encounters()
                 if len(applicable_encounters) > 0:
-                    pass
+                    message = applicable_encounters[0].get_start_encouter_message()
+                    self.platform_communication.send_message(message)
                 time.sleep(1)
             # if thread is None or thread.is_alive() == False:
             #     try:
@@ -128,13 +129,12 @@ class ExperienceManager:
             #         thread = threading.Thread(target=self.create_action_to_send_to_environment, daemon=True)
             #         thread.start()
     
-    def get_available_encounters(self) -> list:
+    def get_available_encounters(self) -> list[Encounter]:
         """
         This method is used to get the encounters that are available to be applied. 
         It checks the preconditions of the encounters with the worldstate and returns the ones that can be applied.
         """
         return_list = []
-        debugpy.breakpoint()
         for encounter in self.encounters:
             applicable, _ = self.environment_state.check_precondition_recursive(encounter.preconditions)
             if applicable:
