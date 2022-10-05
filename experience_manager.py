@@ -119,6 +119,7 @@ class ExperienceManager:
                 if len(applicable_encounters) > 0:
                     message = applicable_encounters[0].get_start_encouter_message()
                     self.platform_communication.send_message(message)
+                    applicable_encounters[0].executed = True
                 time.sleep(1)
             # if thread is None or thread.is_alive() == False:
             #     try:
@@ -136,9 +137,10 @@ class ExperienceManager:
         """
         return_list = []
         for encounter in self.encounters:
-            applicable, _ = self.environment_state.check_precondition_recursive(encounter.preconditions)
-            if applicable:
-                return_list.append(encounter)
+            if encounter.executed == False:
+                applicable, _ = self.environment_state.check_precondition_recursive(encounter.preconditions)
+                if applicable:
+                    return_list.append(encounter)
         return return_list
 
     def encounter_initialization(self, encounter_data):

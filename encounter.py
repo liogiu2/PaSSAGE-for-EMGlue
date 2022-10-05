@@ -9,6 +9,7 @@ class Encounter:
         self.metadata = initialization_text['metadata']
         self.preconditions_text = initialization_text['preconditions']
         self.preconditions = worldstate.create_action_proposition_from_PDDL(self.preconditions_text)
+        self.executed = False
 
     def get_start_encouter_message(self) -> str:
         """
