@@ -1,4 +1,5 @@
 import sys, os
+from player_model import PlayerModel
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'EV_PDDL'))
 from platform_communication import PlatformCommunication
 from encounter import Encounter
@@ -20,6 +21,7 @@ class ExperienceManager:
         self.platform_communication = PlatformCommunication()
         self._PDDL_parser = PDDL_Parser()
         self.encounters = []
+        self.player_model = PlayerModel()
 
     def start_platform_communication(self):
         """
@@ -116,10 +118,16 @@ class ExperienceManager:
                     print("Received message: " + str(changed_relations))
                 self.update_environment_state(changed_relations)
                 applicable_encounters = self.get_available_encounters()
-                if len(applicable_encounters) > 0:
+                if len(applicable_encounters) == 1:
                     message = applicable_encounters[0].get_start_encouter_message()
                     self.platform_communication.send_message(message)
                     applicable_encounters[0].executed = True
+                elif len(applicable_encounters) > 1:
+                    encounter = self.get_most_suited_encounter(applicable_encounters)
+                    self.flag_other_encouters(applicable_encounters, encounter)
+                    message = encounter.get_start_encouter_message()
+                    self.platform_communication.send_message(message)
+                    encounter.executed = True
                 time.sleep(1)
             # if thread is None or thread.is_alive() == False:
             #     try:
@@ -137,11 +145,31 @@ class ExperienceManager:
         """
         return_list = []
         for encounter in self.encounters:
-            if encounter.executed == False:
+            if encounter.executed == False and encounter.skipped == False:
                 applicable, _ = self.environment_state.check_precondition_recursive(encounter.preconditions)
                 if applicable:
                     return_list.append(encounter)
         return return_list
+
+    def get_most_suited_encounter(self, available_encouters: list[Encounter]) -> Encounter:
+        """
+        This method is used to get the most suited encounter based on the player model.
+        """
+        pm_top_two = self.player_model.get_top_two_player_model_types()
+        for encounter in available_encouters:
+            if pm_top_two[0] in encounter.metadata['target-model']:
+                return encounter
+            elif pm_top_two[1] in encounter.metadata['target-model']:
+                return encounter
+        return None
+
+    def flag_other_encouters(self, available_encounters: list[Encounter], encounter_to_skip: Encounter):
+        """
+        This method is used to skip the other encounters.
+        """
+        for encounter in available_encounters:
+            if encounter != encounter_to_skip:
+                encounter.skipped = True
 
     def encounter_initialization(self, encounter_data):
         """
@@ -155,15 +183,25 @@ class ExperienceManager:
         This method is used to update the environment state.
         """
         for item in changed_relations:
-            for rel in item:
-                if rel[0] == 'new':
-                    self.environment_state.add_relation_from_PDDL(rel[1])
-                elif rel[0] == 'changed_value':
-                    PDDL_relation = self.environment_state.create_relation_from_PDDL(rel[1])
-                    environment_state_relation = self.environment_state.find_relation(relation = PDDL_relation, exclude_value = True)
-                    environment_state_relation.modify_value(PDDL_relation.value)
-                elif rel[0] == 'new_entity':
-                    self.environment_state.add_entity_from_PDDL(rel[1])
+            if len(item) > 0 and item[0] == 'update_player_model':
+                print("Updating player model." + str(item[1]))
+                self.update_player_model(item[1])
+            else:
+                for rel in item:
+                    if rel[0] == 'new':
+                        self.environment_state.add_relation_from_PDDL(rel[1])
+                    elif rel[0] == 'changed_value':
+                        PDDL_relation = self.environment_state.create_relation_from_PDDL(rel[1])
+                        environment_state_relation = self.environment_state.find_relation(relation = PDDL_relation, exclude_value = True)
+                        environment_state_relation.modify_value(PDDL_relation.value)
+                    elif rel[0] == 'new_entity':
+                        self.environment_state.add_entity_from_PDDL(rel[1])
+
+    def update_player_model(self, player_model):
+        """
+        This method is used to update the player model.
+        """
+        self.player_model.update_player_model_from_message(player_model)
 
     def create_action_to_send_to_environment(self):
         """
