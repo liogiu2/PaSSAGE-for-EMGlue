@@ -56,7 +56,7 @@ class PlayerModel:
         list
             A list of the top two player model types.
         """
-        player_model_types = ["Fighter", "Method actor", "Storyteller", "Tactician", "Power gamer"]
+        player_model_types = ["fighter", "method_actor", "storyteller", "tactician", "power_gamer"]
         player_model_values = [self.fighter, self.method_actor, self.storyteller, self.tactician, self.power_gamer]
         top_two_player_model_types = []
         for i in range(2):

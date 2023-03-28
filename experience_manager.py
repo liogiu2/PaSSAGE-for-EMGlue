@@ -11,6 +11,7 @@ from ev_pddl.action import Action
 import input_timeout
 import threading
 import debugpy
+import random
 
 class ExperienceManager:
 
@@ -155,13 +156,22 @@ class ExperienceManager:
         """
         This method is used to get the most suited encounter based on the player model.
         """
+        # debugpy.breakpoint()
         pm_top_two = self.player_model.get_top_two_player_model_types()
-        for encounter in available_encouters:
-            if pm_top_two[0] in encounter.metadata['target-model']:
-                return encounter
-            elif pm_top_two[1] in encounter.metadata['target-model']:
-                return encounter
-        return None
+        most_suited = [e for e in available_encouters if pm_top_two[0] in e.metadata['target-model']]
+        if len(most_suited) == 0:
+            other = [e for e in available_encouters if pm_top_two[1] in e.metadata['target-model']]
+        elif len(most_suited) > 1:
+            other = [e for e in most_suited if pm_top_two[1] in e.metadata['target-model']]
+        else:
+            return most_suited[0]
+
+        if len(other) > 1:
+            return other[0]
+        elif len(other) == 1:
+            return other[0]
+        else:
+            return available_encouters[random.randint(0, len(available_encouters) - 1)]
 
     def flag_other_encouters(self, available_encounters: list[Encounter], encounter_to_skip: Encounter):
         """
