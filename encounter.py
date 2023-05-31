@@ -22,3 +22,4 @@ class Encounter:
             The message to be sent to the environment when the encounter is started.
         """
         return "start_encounter({})".format(self.name)
+        

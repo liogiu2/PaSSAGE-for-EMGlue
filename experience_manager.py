@@ -105,7 +105,6 @@ class ExperienceManager:
         for item in self.encounters_received['encounters']:
             self.encounter_initialization(item)
         print("Starting normal communication...")
-        print("Press something to start the action builder...")
         thread = None
         # debugpy.listen(5678)
         while True:
@@ -124,7 +123,7 @@ class ExperienceManager:
                     self.platform_communication.send_message(message)
                     applicable_encounters[0].executed = True
                 elif len(applicable_encounters) > 1:
-                    encounter = self.get_most_suited_encounter(applicable_encounters)
+                    encounter = self.get_most_suited_encounter_dot(applicable_encounters)
                     self.flag_other_encouters(applicable_encounters, encounter)
                     message = encounter.get_start_encouter_message()
                     self.platform_communication.send_message(message)
@@ -144,6 +143,7 @@ class ExperienceManager:
         This method is used to get the encounters that are available to be applied. 
         It checks the preconditions of the encounters with the worldstate and returns the ones that can be applied.
         """
+        # debugpy.breakpoint()
         return_list = []
         for encounter in self.encounters:
             if encounter.executed == False and encounter.skipped == False:
@@ -172,6 +172,27 @@ class ExperienceManager:
             return other[0]
         else:
             return available_encouters[random.randint(0, len(available_encouters) - 1)]
+    
+    def get_most_suited_encounter_dot(self, available_encouters: list[Encounter]) -> Encounter:
+        """
+        This method is used to get the most suited encounter based on the player model.
+        """
+        # debugpy.breakpoint()
+        dict_pm = self.player_model.get_dict()
+        max_value = 0
+        encounter_to_return = None
+        for encounter in available_encouters:
+            value = 0
+            for key in dict_pm:
+                if key in encounter.metadata['target-model']:
+                    value += dict_pm[key] * encounter.metadata['target-model'][key]
+            if value > max_value:
+                max_value = value
+                encounter_to_return = encounter
+        return encounter_to_return
+            
+                
+
 
     def flag_other_encouters(self, available_encounters: list[Encounter], encounter_to_skip: Encounter):
         """
@@ -212,6 +233,7 @@ class ExperienceManager:
         This method is used to update the player model.
         """
         self.player_model.update_player_model_from_message(player_model)
+        self.player_model.print_player_model()
 
     def create_action_to_send_to_environment(self):
         """

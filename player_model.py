@@ -74,3 +74,14 @@ class PlayerModel:
         return_string += "Tactician: " + str(self.tactician) + ", "
         return_string += "Power gamer: " + str(self.power_gamer)
         print(return_string)
+    
+    def get_dict(self):
+        """
+        Method used to get the player model as a dictionary.
+
+        Returns
+        -------
+        dict
+            The player model as a dictionary.
+        """
+        return {"fighter" : self.fighter, "method_actor" : self.method_actor, "storyteller" : self.storyteller, "tactician" : self.tactician, "power_gamer" : self.power_gamer}
